@@ -28,31 +28,32 @@ toggle_keys = {'b':BACKGROUND_SUBTRACTOR, 'c':CORNER_DETECTION, 't':THRESHOLDING
 WINDOW_NAME = "rpicam-clientserver-openCV-CRS"
 SCAN_LEN_EST = 1000#(s) guessing len of SOS, if wrong frame broken/merged
 
-def getFrame3(buffer, skip=False):
+def getFrame3(buffer, skip=True):
     '''
     used to scan through buffer to get mjpeg frames
     skips blocks with cmds in headers set
     '''
-    #s=buffer.find(0xd8), if i-1=0xff (start)
-    #e=buffer.find(0xd9), if i-1=0xff (end)
-    #return end
-    headers = set([0xE0, 0xE1, 0xDB, 0xC0, 0xC4])#xFF xE0/E1... skippable
-    non_skippable = set([0x00, 0xd8, 0xda])#xFF x00/xd8/da non skippable
-    for i in range(0, len(buffer), 1):
-        if buffer[i] == 0xFF:
+    if 0:# investigated using buffer.find(signature) to scan from the start of the frame to the end but less performant
+        try:
+            return 0 + buffer.find(bytearray([0xd9]))
+        except ValueError:# eoi not found
+            return len(buffer)# frame end not found, read more bytes from socket, re-try
+    
+    headers = set([0xE0, 0xE1, 0xDB, 0xC0, 0xC4])# xFF xE0/E1... skippable
+    non_skippable = set([0x00, 0xd8, 0xda])# xFF x00/xd8/da non skippable
+    for i in range(len(buffer)):
+        if buffer[i] == 0xFF:# find 0xff then check trailing byte
             if i+1 == len(buffer):
-                return i-1#last byte = xFF so point before it for next call
+                return i-1# last byte = xFF so point before it for next call
             elif buffer[i+1] in headers:
                 temp = buffer[i+2:i+4]
                 length = int.from_bytes(temp,'big')
-                return i+length#skips a block
+                return i+length# skips a block
             elif buffer[i+1] == 0xD9:
-                return i+1#this points to xD9 in buffer
-            elif buffer[i+1] == 0xda and skip:#start of scan, skip x bytes (risky)
+                return i+1# end of frame
+            elif buffer[i+1] == 0xda and skip:# start of scan, skip x bytes (risky)
                 return i + SCAN_LEN_EST
-            #elif buffer[i+1] not in non_skippable:
-                #print("potential header:", hex(buffer[i+1]))
-    return len(buffer)
+    return len(buffer)# frame end not found, read more bytes from socket, re-try
 
 # Start a socket listening for connections on 0.0.0.0:PORT_NUMBER (all addrs)
 server_socket = socket.socket()
@@ -71,19 +72,19 @@ cv2.setUseOptimized(True)
 backSub = cv2.createBackgroundSubtractorMOG2(history=100, varThreshold=16, detectShadows=False)
 try:
     buffer = bytearray()
-    READ_LENGTH = 4096
+    READ_LENGTH = 1024
     COUNTER = 0
 
     while True:
-        frame = bytearray()       
+        frame = bytearray()# holds a mjpeg frame
         while True: # populates 1 frame, and leaves buffer with next frame start in it
-            buffer += connection.recv(READ_LENGTH)# FF D8 (start of scan).. .. FF D9 (end of scan) -- MJPEG FRAME
-            i = getFrame3(buffer, COUNTER > 10)# points to last scanned byte in buffer
-            while i > len(buffer):# if skipped ahead read to the skipped index
+            buffer += connection.recv(READ_LENGTH)# FF D8 (start of image).. .. FF D9 (end of image) -- MJPEG FRAME
+            eoi = getFrame3(buffer)# find end of image index
+            while eoi >= len(buffer):# if skipped ahead read to the skipped index
                 buffer += connection.recv(READ_LENGTH)
 
-            frame += buffer[:i+1]# add to frame everything up to including last scanned byte
-            buffer = buffer[i+1:]# remove frame from buffer but keep data that exceeded the frame
+            frame += buffer[:eoi+1]# add to frame everything up to including last scanned byte
+            buffer = buffer[eoi+1:]# remove frame from buffer but keep data that exceeded the frame
             if len(frame) == 0 or frame[-2] == 0xFF and frame[-1] == 0xD9:
                 break
         if len(frame) == 0:
