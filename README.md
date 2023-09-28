@@ -1,33 +1,32 @@
 # rpicam-clientserver-openCV
 
 # description
-client:
-	Raspberry Pi python script to send camera MJPEG frames to a specified server address
-server:
-	python script using openCV to alter recieved images and display them
+client:	Raspberry Pi python script to send camera MJPEG frames to a specified server address.
+server:	python script using openCV to alter recieved images and display them.
 
 
 # requirements
-client:
-	Python
-	Raspberry Pi 3 Model B+ 2017
-	Raspberry Pi camera Rev 1.3
-server:
-	Python
-	opencv-python
+client:	Python,	Raspberry Pi 3 Model B+ 2017, Raspberry Pi camera Rev 1.3.
+server:	Python,	opencv-python.
 
 
 # how to start
-client (Raspberry Pi):
-	cntrl+alt+t or ssh pi@192.168.1.66 to open the cmd line
+client:
+
+    # to open the cmd line
+	cntrl+alt+t or ssh pi@192.168.1.66 
+	
 	# run cmd in the dir of the script
 	python picamera_client.py SERVER_ADDR SERVER_PORT
 	python picamera_client.py 192.168.1.68 8002
 
 server:
-	shift right click in dir-> open windows power shell
-	# to send client script to your rpi
-	scp picamera_client.py pi@192.168.1.66 #(scp -options source destination)
+
+    # to open windows power shell
+	shift right click in directory-> open windows power shell
+	
+	# to send client script to your rpi. (scp -options source destination)
+	scp picamera_client.py pi@192.168.1.66
 
 	# to run the server
 	py picamera_server.py SERVER_PORT
@@ -37,6 +36,8 @@ server:
 	Receiving a networked video data stream, dividing the data stream, and decoding each frame using an openCV function
 	MJPEG encodes the video with each frame being compressed as a JPEG image
 	In many MJPEG implementations, the header does not explicitly contain the exact length of the frame data. Instead, the length of the frame is determined by the end marker
+	
+# (M)JPEG/JFIF File Structure / Common Markers
 
 Short name| 	Bytes| 	Payload| 	Name| 	Comments|
 --- | --- | --- | --- | --- |
