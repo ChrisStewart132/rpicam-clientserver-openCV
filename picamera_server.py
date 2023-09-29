@@ -4,6 +4,11 @@ import socket
 import subprocess
 import time
 import sys
+
+display_width = 1920
+display_height = 1080
+
+
 # Check the number of command-line arguments
 if len(sys.argv) < 2:
     print("Usage: py" + argv[0] + ".py PORT_NUMBER")
@@ -68,6 +73,15 @@ connection, addr = server_socket.accept()
 print("connection recvd", addr)
 
 cv2.setUseOptimized(True)
+
+# save video
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+out = cv2.VideoWriter('video.mp4', fourcc, fps=30, frameSize=(display_width, display_height))
+if not out.isOpened():
+    print("VideoWriter not opened successfully.")
+    sys.exit(1)
+
+
 #face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades
 backSub = cv2.createBackgroundSubtractorMOG2(history=100, varThreshold=16, detectShadows=False)
 try:
@@ -184,10 +198,17 @@ try:
         #image = cv2.flip(transposed_image, 1)# Flip horizontally to complete the 90-degree counterclockwise rotation
         #image = cv2.warpAffine(image, cv2.getRotationMatrix2D((width / 2, height / 2), 180, 1), (width, height))
         image = cv2.rotate(image, cv2.ROTATE_180)
-        image = cv2.resize(image,(1920, 1080))
-        cv2.putText(image, f"{COUNTER} {toggle_keys} press \"q\" to exit", (10,20),cv2.FONT_HERSHEY_COMPLEX,0.8,(255,255,255))                 
+        image = cv2.resize(image,(display_width, display_height))
+        cv2.putText(image, f"{COUNTER} {toggle_keys} press \"q\" to exit", (10,20),cv2.FONT_HERSHEY_COMPLEX,0.8,(255,255,255))
+        
+        if not out.write(image):
+            pass# TODO
+            #print(f"{image.shape[:2]}, {(display_height, display_width)}, {image.shape[:2] == (display_height, display_width)}")
+            #raise ValueError("out.write(image)")
+        
+        
         cv2.imshow(WINDOW_NAME, image)
-
+        
 
         # user key input
         key = cv2.waitKey(1)
@@ -199,6 +220,8 @@ try:
         COUNTER += 1
         
 finally:
+    cv2.imwrite("finalimage.jpg", image)
+    out.release()
     print("connection closed", addr)
     connection.close()
     server_socket.close()
