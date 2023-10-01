@@ -1,12 +1,22 @@
 import numpy as np
 import cv2
+#print(cv2.__version__)
+#print(cv2.getBuildInformation())
 import socket
 import subprocess
 import time
 import sys
 
-display_width = 1920
-display_height = 1080
+
+# WINDOW CONFIG
+DISPLAY_WIDTH = 1280
+DISPLAY_HEIGHT = 720
+
+# OUTPUT VIDEO CONFIG
+SAVE_VIDEO = True
+VIDEO_CODEC = 'MJPG'
+VIDEO_FPS = 30
+VIDEO_FILENAME = 'output.avi'
 
 
 # Check the number of command-line arguments
@@ -75,12 +85,12 @@ print("connection recvd", addr)
 cv2.setUseOptimized(True)
 
 # save video
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-out = cv2.VideoWriter('video.mp4', fourcc, fps=30, frameSize=(display_width, display_height))
-if not out.isOpened():
-    print("VideoWriter not opened successfully.")
-    sys.exit(1)
-
+if SAVE_VIDEO:
+    fourcc = cv2.VideoWriter_fourcc(*VIDEO_CODEC)
+    out = cv2.VideoWriter(VIDEO_FILENAME, fourcc, fps=VIDEO_FPS, frameSize=(DISPLAY_WIDTH, DISPLAY_HEIGHT), isColor=True)
+    if not out.isOpened():
+        print("VideoWriter not opened successfully.")
+        sys.exit(1)
 
 #face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades
 backSub = cv2.createBackgroundSubtractorMOG2(history=100, varThreshold=16, detectShadows=False)
@@ -193,21 +203,27 @@ try:
             image = backSub.apply(image)
 
 
-        # resize. rotate (camera upside-down irl), add state text, add modified image to window
         #transposed_image = cv2.transpose(image)# Transpose the frame (swap rows and columns)
         #image = cv2.flip(transposed_image, 1)# Flip horizontally to complete the 90-degree counterclockwise rotation
         #image = cv2.warpAffine(image, cv2.getRotationMatrix2D((width / 2, height / 2), 180, 1), (width, height))
         image = cv2.rotate(image, cv2.ROTATE_180)
-        image = cv2.resize(image,(display_width, display_height))
+        image = cv2.resize(image,(DISPLAY_WIDTH, DISPLAY_HEIGHT))
+        #image.resize((DISPLAY_HEIGHT, DISPLAY_WIDTH))# resizes in-place
         cv2.putText(image, f"{COUNTER} {toggle_keys} press \"q\" to exit", (10,20),cv2.FONT_HERSHEY_COMPLEX,0.8,(255,255,255))
-        
-        if not out.write(image):
-            pass# TODO
-            #print(f"{image.shape[:2]}, {(display_height, display_width)}, {image.shape[:2] == (display_height, display_width)}")
-            #raise ValueError("out.write(image)")
-        
-        
+        #help(image)
         cv2.imshow(WINDOW_NAME, image)
+
+
+        
+        # save video
+        if SAVE_VIDEO:
+            if any([toggle_keys[x] for x in ('g','l','t','b')]):# convert from gray to color
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            write_flag = out.write(image)
+
+        
+        
+        
         
 
         # user key input
